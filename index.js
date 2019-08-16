@@ -251,10 +251,11 @@ app.get('/:db/_changes', async (req, res) => {
   }
 
   // parameter munging
-  const since = req.query.since ? req.query.since : '0'
+  let since = req.query.since ? req.query.since : '0'
   const includeDocs = req.query.include_docs === 'true'
   let limit
   try {
+    since = parseInt(since)
     limit = req.query.limit ? Number.parseInt(req.query.limit) : null
   } catch (e) {
     return sendError(res, 400, 'Invalid limit parameter')
@@ -264,11 +265,9 @@ app.get('/:db/_changes', async (req, res) => {
   }
 
   try {
-    const startKey = keyutils.getChangesKey(databaseName, since)
-    const endKey = keyutils.getChangesKey(databaseName, 'z')
-    console.log(startKey, endKey)
+    const startKey = keyutils.getChangesKey(databaseName, since + 1 )
+    const endKey = keyutils.getChangesKey(databaseName, Number.MAX_SAFE_INTEGER)
     const data = await db.getRangeAll(startKey, endKey, { limit: limit })
-    console.log(data)
     let lastSeq
     const obj = {
       last_seq: '',
@@ -425,9 +424,7 @@ app.get('/:db/:id', async (req, res) => {
   }
   try {
     const k = keyutils.getDocKey(databaseName, id)
-    console.log(k)
     const data = await db.get(k)
-    console.log(data)
     if (!data || data._deleted) {
       throw new Error('missing document')
     }
