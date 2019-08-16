@@ -157,6 +157,55 @@ $ curl -X POST \
 $ curl -X DELETE http://localhost:5984/mydb
 {"ok":true}
 ```
+## Indexing
+
+*PostDB* has no MapReduce, or Mango search but it does allow any number of fields to be indexed. By default, those are fields starting with `_` (except `_id`, `_rev` and `_deleted`) e.g. `_i1`, `_myindex` & `_sausages`. For example your document could look like this:
+
+```js
+{
+  "_id": "abc123",
+  "_i1": "1561972800000",
+  "_i2": "smith",
+  "_i3": "person:uk:2019-07-01",
+  "type": "person",
+  "name": "Bob Smith",
+  "dob": "1965-04-21",
+  "country": "uk",
+  "lastLogin": "2019-07-01 10:20:00"
+}
+```
+
+In this case `_i1` is used to extract users by a timestamp, perhaps last login time. The `_i2` index is used to extract users by surname, all lowercase. The third compounds several fields: document type, country and last login date.
+
+If documents don't need additional data indexed, then the fields can be omitted or left as empty strings. All the indexed fields must be strings.
+
+The indexed data can be accessed using the `POST /db/_query` endpoint which expects a JSON object that defines the query like so:
+
+```js
+{ 
+  "index": "i1",
+  "startkey": "c",
+  "endkey": "m"
+}
+``` 
+
+e.g
+
+```sh
+```sh
+$ curl -X POST \
+       -H 'Content-type: application/json' \
+       -d '{"index": "i1", "startkey": "e", "endkey": "m"}' \
+       http://localhost:5984/mydb/_query
+{"docs":[...]}
+```
+
+Parameters:
+
+- `index` - the name of index to query (mandatory).
+- `startkey`/`endkey` - one or both supplied, for range queries.
+- `key` - the key in the index to search for, for selection queries.
+- `limit` - the number of documents to return   (default: 100)
 
 ## Dashboard
 

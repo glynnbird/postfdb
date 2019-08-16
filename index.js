@@ -65,6 +65,8 @@ const writeDoc = async (databaseName, id, doc) => {
       // get database
       const k = keyutils.getDBKey(databaseName)
       console.log('datbase key', k)
+
+      // check the database exists
       const dbObj = await tn.get(k)
       if (!dbObj) {
         throw new Error('missing database')
@@ -78,8 +80,10 @@ const writeDoc = async (databaseName, id, doc) => {
       // calculate doc key
       const docKey = keyutils.getDocKey(databaseName, id)
 
-      // calculate to changes key
+      // calculate the changes key
       const changesKey = keyutils.getChangesKey(databaseName, seq.toString())
+
+      // write newchange
       const changesObj = { id: id }
       if (doc._deleted) {
         changesObj.deleted = true
@@ -87,22 +91,29 @@ const writeDoc = async (databaseName, id, doc) => {
       await tn.set(changesKey, changesObj)
 
       // write doc to database
+      const oldDoc = await tn.get(docKey)
       delete doc._id
       delete doc._rev
       await tn.set(docKey, doc)
 
       // write any indexes to the database
       // find any fields which start with _ but are not _id, _rev, or _deleted
-      /*      const indexedFields = Object.keys(doc).filter( function(x) { return x.startsWith('_') && !['_id','_rev','_deleted'].includes(x)})
-      console.log(indexedFields)
-      const startKey =
-      await tn.clearRangeStartsWith()
+      const indexedFields = Object.keys(doc).filter( function(x) { return x.startsWith('_') && !['_id','_rev','_deleted'].includes(x)})
       for(var i in indexedFields) {
         const indexedField = indexedFields[i]
-        const k = keyutils.getIndexKey(databaseName, indexedField.replace(/^_/,''), doc[indexedField])
+        const niceIndexedField = indexedField.replace(/^_/,'')
+        
+        // clear old key
+        if (oldDoc) {
+          const oldk = keyutils.getIndexKey(databaseName, niceIndexedField, oldDoc[indexedField], id)
+          await tn.clear(oldk)
+        }
+        
+        // set new key
+        const k = keyutils.getIndexKey(databaseName, niceIndexedField, doc[indexedField], id)
         await tn.set(k, id)
       }
-*/
+
       // update seq
       dbObj.update_seq = seq.toString()
       await tn.set(k, dbObj)
@@ -369,7 +380,7 @@ app.get('/:db/_changes', async (req, res) => {
 
 // GET /db/_query
 // query one of the defaults.indexes
-/* app.post('/:db/_query', async (req, res) => {
+ app.post('/:db/_query', async (req, res) => {
   const databaseName = req.params.db
   if (!utils.validDatabaseName(databaseName)) {
     return sendError(res, 400, 'Invalid database name')
@@ -394,31 +405,26 @@ app.get('/:db/_changes', async (req, res) => {
     return sendError(res, 400, 'Invalid limit parameter')
   }
 
-  // offset parameter
-  const offset = query.offset ? query.offset : 0
-  if (offset && (typeof offset !== 'number' || offset < 0)) {
-    return sendError(res, 400, 'Invalid offset parameter')
-  }
-
   try {
-    const sql = queryutils.prepareQuerySQL(databaseName, query.index, query.key, query.startkey, query.endkey, query.limit, query.offset)
-    debug(sql.sql, sql.values)
-    const data = await client.query(sql.sql, sql.values)
-    const obj = {
-      docs: []
-    }
-    for (var i in data.rows) {
-      const row = data.rows[i]
-      const doc = docutils.processResultDoc(row)
+    const sk = keyutils.getIndexKey(databaseName, query.index, query.startkey, '')
+    const ek = keyutils.getIndexKey(databaseName, query.index, query.endkey, '{}')
+    const data = await db.getRangeAll(sk, ek, {limit: query.limit})
+    const obj = { docs: [] }
+    for(var i in data) {
+      const row = data[i]
+      const k = keyutils.getDocKey(databaseName, row[1])
+      const doc = await db.get(k)
+      doc._id = row[1]
+      doc._rev = fixrev
       obj.docs.push(doc)
     }
     res.send(obj)
   } catch (e) {
-    debug(e)
+    console.error(e)
     sendError(res, 404, 'Could not query database')
   }
 })
-*/
+
 
 // GET /db/_all_docs
 // get all documents
