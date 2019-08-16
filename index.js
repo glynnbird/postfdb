@@ -11,6 +11,7 @@ const keyutils = require('./lib/keyutils.js')
 const url = require('url')
 const writeDoc = require('./lib/writedoc.js')
 const createDatabase = require('./lib/createdatabase.js')
+const bulkWrite = require('./lib/bulkwrite.js')
 
 // fixed rev value - no MVCC here
 const fixrev = '0-1'
@@ -164,6 +165,7 @@ app.post('/:db/_bulk_docs', async (req, res) => {
   try {
     // process each document
     const response = []
+    const docsToInsert = []
     for (var i in docs) {
       const doc = docs[i]
 
@@ -173,9 +175,11 @@ app.post('/:db/_bulk_docs', async (req, res) => {
         response.push({ ok: false, id: id, error: 'invalid _id' })
         continue
       }
-      await writeDoc(db, databaseName, id, doc)
+      doc._id = id
+      docsToInsert.push(doc)
       response.push({ ok: true, id: id, rev: fixrev })
     }
+    await bulkWrite(db, databaseName, docsToInsert)
     res.status(201).send(response)
   } catch (e) {
     res.status(400).send({ ok: false })

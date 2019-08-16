@@ -9,6 +9,7 @@ const url = require('url')
 const writeDoc = require('./lib/writedoc.js')
 const keyutils = require('./lib/keyutils.js')
 const createDatabase = require('./lib/createdatabase.js')
+const bulkWrite = require('./lib/bulkwrite.js')
 
 // start up FoundationDB connection
 const fdb = require('foundationdb')
@@ -40,7 +41,6 @@ const lookForNewReplications = async (firstTime) => {
         doc._id = id
         newReplications.push(doc)
       }
-      console.log(newReplications)
       for (i in newReplications) {
         const row = newReplications[i]
         startReplication(row)
@@ -117,17 +117,19 @@ const startReplication = async (job) => {
       try {
         const write = async () => {
           let docCount = 0
+          const docs = []
           for (var i = 0; i < b.length; i++) {
             if (b.deleted) {
-              await writeDoc(db, job.target, b[i].id, { _deleted: true })
+              docs.push({ _id: b[i].id, _deleted: true })
               docCount++
             } else {
               if (!b[i].id.match(/^_design/)) {
-                await writeDoc(db, job.target, b[i].id, b[i].doc)
+                docs.push(b[i].doc)
                 docCount++
               }
             }
           }
+          await bulkWrite(db, job.target, docs)
           job.doc_count += docCount
           await writeDoc(db, '_replicator', job._id, job)
         }
@@ -136,7 +138,6 @@ const startReplication = async (job) => {
         debug(e)
       }
     }).on('seq', (s) => {
-      console.log('SEQ', s)
       job.seq = s
       // will be written on next batch
     }).on('error', (e) => {
