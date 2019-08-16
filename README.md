@@ -7,6 +7,8 @@
 - Insert/Update/Delete document API, without requiring revision tokens.
 - Bulk Insert/Update/Delete API.
 - Fetch all documents or a range using the primary index.
+- Fetch documents by key or range of keys using secondary indexes.
+- "Pull" replication i.e. fetching data from a remote URL.
 
 It does not implement CouchDB's MVCC, Design Documents, attachments, MapReduce, "Mango" search or any other CouchDB feature.
 
@@ -206,6 +208,59 @@ Parameters:
 - `startkey`/`endkey` - one or both supplied, for range queries.
 - `key` - the key in the index to search for, for selection queries.
 - `limit` - the number of documents to return   (default: 100)
+
+## Replication
+
+Only "pull" replication is supported i.e. fetching data from a remote URL. A replication is started by writing a data to the `_replicator` database:
+
+```sh
+$ curl -X POST \
+      -d '{"source":"https://U:P@host.cloudant.com/cities","target":"cities"}' \
+      http://localhost:5984/_replicator
+{"ok":true,"id":"73106768769860315949fe301a75c18a","rev":"0-1"}
+```
+
+Parameters for a _replicator document:
+
+- `source` - the source database (must be a URL)
+- `target` - the target databasr (must be a local database name)
+- `since` - the sequence token to start replication from (default `0`)
+- `continuous` - if true, replicates from the source forever (default `false`)
+- `create_target` - if true, a new target database is created (default `false`)
+
+Replications are processed by a second process which is run with:
+
+```sh
+$ npm run replicator
+```
+
+Only one such process should run. It polls for new replcation jobs and sets them off. It will
+resume interrupted replications on restart.
+
+You can check on the status of a replication by pulling the `_replicator` document you created:
+
+```sh
+$ curl http://localhost:5984/_replicator/73106768769860315949fe301a75c18a
+{
+  "source": "https://U:P@host.cloudant.com/cities",
+  "target": "cities",
+  "continuous": false,
+  "create_target": false,
+  "state": "running",
+  "seq": "5000-g1AAAAf7eJy9lM9NwzAUh",
+  "doc_count": 5000,
+  "_id": "73106768769860315949fe301a75c18a",
+  "_rev": "0-1",
+  "_i1": "running",
+  "_i2": "",
+  "_i3": ""
+}
+```
+
+Note the additional fields:
+
+- `state` - the state of the replication `new`/`running`/`completed`/`error`
+- `doc_count` - the number of documents written so far.
 
 ## Dashboard
 

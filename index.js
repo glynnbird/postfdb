@@ -9,6 +9,8 @@ const kuuid = require('kuuid')
 const morgan = require('morgan')
 const keyutils = require('./lib/keyutils.js')
 const url = require('url')
+const writeDoc = require('./lib/writedoc.js')
+const createDatabase = require('./lib/createdatabase.js')
 
 // fixed rev value - no MVCC here
 const fixrev = '0-1'
@@ -57,74 +59,6 @@ const db = fdb.openSync()
 // send error
 const sendError = (res, statusCode, str) => {
   res.status(statusCode).send({ error: str })
-}
-
-// write a document to the database
-const writeDoc = async (databaseName, id, doc) => {
-  try {
-    await db.doTransaction(async tn => {
-      // get database
-      const k = keyutils.getDBKey(databaseName)
-      console.log('datbase key', k)
-
-      // check the database exists
-      const dbObj = await tn.get(k)
-      if (!dbObj) {
-        throw new Error('missing database')
-      }
-
-      // calculate new sequence
-      console.log(dbObj)
-      const seq = parseInt(dbObj.update_seq) + 1
-      console.log('new seq', seq)
-
-      // calculate doc key
-      const docKey = keyutils.getDocKey(databaseName, id)
-
-      // calculate the changes key
-      const changesKey = keyutils.getChangesKey(databaseName, seq.toString())
-
-      // write newchange
-      const changesObj = { id: id }
-      if (doc._deleted) {
-        changesObj.deleted = true
-      }
-      await tn.set(changesKey, changesObj)
-
-      // write doc to database
-      const oldDoc = await tn.get(docKey)
-      delete doc._id
-      delete doc._rev
-      await tn.set(docKey, doc)
-
-      // write any indexes to the database
-      // find any fields which start with _ but are not _id, _rev, or _deleted
-      const indexedFields = Object.keys(doc).filter(function (x) { return x.startsWith('_') && !['_id', '_rev', '_deleted'].includes(x) })
-      for (var i in indexedFields) {
-        const indexedField = indexedFields[i]
-        const niceIndexedField = indexedField.replace(/^_/, '')
-
-        // clear old key
-        if (oldDoc) {
-          const oldk = keyutils.getIndexKey(databaseName, niceIndexedField, oldDoc[indexedField], id)
-          await tn.clear(oldk)
-        }
-
-        // set new key
-        const k = keyutils.getIndexKey(databaseName, niceIndexedField, doc[indexedField], id)
-        await tn.set(k, id)
-      }
-
-      // update seq
-      dbObj.update_seq = seq.toString()
-      await tn.set(k, dbObj)
-      console.log(dbObj)
-
-      return { ok: true }
-    })
-  } catch (e) {
-    console.log(e)
-  }
 }
 
 // POST /_session
@@ -182,7 +116,7 @@ app.post('/_replicator', async (req, res) => {
   const id = utils.hash(JSON.stringify({ source: doc.source, target: doc.target }))
 
   try {
-    await writeDoc('_replicator', id, doc)
+    await writeDoc(db, '_replicator', id, doc)
     res.send({ ok: true, id: id, rev: fixrev })
   } catch (e) {
     debug(e)
@@ -205,7 +139,7 @@ app.delete('/_replicator/:id', async (req, res) => {
 
     // set it to cancellled and write it back
     doc.state = doc._i1 = 'cancelled'
-    await writeDoc('_replicator', id, doc)
+    await writeDoc(db, '_replicator', id, doc)
     res.send({ ok: true, id: id, rev: fixrev })
   } catch (e) {
     debug(e)
@@ -239,7 +173,7 @@ app.post('/:db/_bulk_docs', async (req, res) => {
         response.push({ ok: false, id: id, error: 'invalid _id' })
         continue
       }
-      await writeDoc(databaseName, id, doc)
+      await writeDoc(db, databaseName, id, doc)
       response.push({ ok: true, id: id, rev: fixrev })
     }
     res.status(201).send(response)
@@ -516,7 +450,7 @@ app.put('/:db/:id', readOnlyMiddleware, async (req, res) => {
     return sendError(res, 400, 'Invalid JSON')
   }
   try {
-    await writeDoc(databaseName, id, doc)
+    await writeDoc(db, databaseName, id, doc)
     res.status(201).send({ ok: true, id: id, rev: fixrev })
   } catch (e) {
     debug(e)
@@ -539,7 +473,7 @@ app.delete('/:db/:id', readOnlyMiddleware, async (req, res) => {
     const obj = {
       _deleted: true
     }
-    await writeDoc(databaseName, id, obj)
+    await writeDoc(db, databaseName, id, obj)
     res.send({ ok: true, id: id, rev: fixrev })
   } catch (e) {
     debug(e)
@@ -557,7 +491,7 @@ app.post('/:db', readOnlyMiddleware, async (req, res) => {
   const id = kuuid.id()
   const doc = req.body
   try {
-    await writeDoc(databaseName, id, doc)
+    await writeDoc(db, databaseName, id, doc)
     res.status(201).send({ ok: true, id: id, rev: fixrev })
   } catch (e) {
     debug(e)
@@ -574,19 +508,7 @@ app.put('/:db', readOnlyMiddleware, async (req, res) => {
   }
   debug('Creating database - ' + databaseName)
   try {
-    const k = keyutils.getDBKey(databaseName)
-    const existingDB = await db.get(k)
-    if (existingDB) {
-      throw new Error('existing database')
-    }
-    const obj = {
-      update_seq: '0',
-      db_name: databaseName,
-      purge_seq: 0,
-      doc_del_count: 0,
-      doc_count: 0
-    }
-    await db.set(k, obj)
+    await createDatabase(db, databaseName)
     res.send({ ok: true })
   } catch (e) {
     debug(e)
@@ -657,6 +579,13 @@ app.use(function (req, res) {
 // main
 const main = async () => {
   try {
+    try {
+      await createDatabase(db, '_replicator')
+    } catch (e) {
+      // swallow errors
+      debug('_replicator already exists')
+    }
+
     // start up the app
     app.listen(defaults.port, () => console.log(`${pkg.name} API service listening on port ${defaults.port}!`))
   } catch (e) {
