@@ -290,3 +290,21 @@ See debugging messages by setting the `DEBUG` environment variable:
 ```sh
 DEBUG=postdb npm run start
 ```
+
+## How does it work?
+
+Data is stored in FoundationDB - a multi node key/value store.
+
+Databases are stored in keys:
+
+```
+['_db','animaldb'] => { ... }
+```
+
+The contents of the databases are stored in keys:
+
+```
+['animaldb', 'doc', 'fox'] => { ... }
+['animaldb', 'changes', 'fox', '45'] => { ... }
+['animaldb', 'index', 'myindexname', 'value', 'fox'] => 'fox'
+```
