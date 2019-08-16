@@ -8,6 +8,7 @@ const basicAuth = require('express-basic-auth')
 const kuuid = require('kuuid')
 const morgan = require('morgan')
 const keyutils = require('./lib/keyutils.js')
+const url = require('url')
 
 // fixed rev value - no MVCC here
 const fixrev = '0-1'
@@ -98,17 +99,17 @@ const writeDoc = async (databaseName, id, doc) => {
 
       // write any indexes to the database
       // find any fields which start with _ but are not _id, _rev, or _deleted
-      const indexedFields = Object.keys(doc).filter( function(x) { return x.startsWith('_') && !['_id','_rev','_deleted'].includes(x)})
-      for(var i in indexedFields) {
+      const indexedFields = Object.keys(doc).filter(function (x) { return x.startsWith('_') && !['_id', '_rev', '_deleted'].includes(x) })
+      for (var i in indexedFields) {
         const indexedField = indexedFields[i]
-        const niceIndexedField = indexedField.replace(/^_/,'')
-        
+        const niceIndexedField = indexedField.replace(/^_/, '')
+
         // clear old key
         if (oldDoc) {
           const oldk = keyutils.getIndexKey(databaseName, niceIndexedField, oldDoc[indexedField], id)
           await tn.clear(oldk)
         }
-        
+
         // set new key
         const k = keyutils.getIndexKey(databaseName, niceIndexedField, doc[indexedField], id)
         await tn.set(k, id)
@@ -134,7 +135,7 @@ app.post('/_session', async (req, res) => {
 
 // POST /_replicator
 // start a replication
-/* app.post('/_replicator', async (req, res) => {
+app.post('/_replicator', async (req, res) => {
   const doc = req.body || {}
 
   // if the source isn't a string then we need to construct
@@ -196,14 +197,11 @@ app.delete('/_replicator/:id', async (req, res) => {
     return sendError(res, 400, 'Invalid id')
   }
   try {
-    // read the document
-    const sql = docutils.prepareGetSQL('_replicator')
-    debug(sql, [id])
-    const data = await client.query(sql, [id])
-    if (data.rows.length === 0) {
+    const k = keyutils.getDocKey('_replicator', id)
+    const doc = await db.get(k)
+    if (!doc) {
       throw (new Error('missing document'))
     }
-    const doc = docutils.processResultDoc(data.rows[0])
 
     // set it to cancellled and write it back
     doc.state = doc._i1 = 'cancelled'
@@ -214,7 +212,6 @@ app.delete('/_replicator/:id', async (req, res) => {
     sendError(res, 404, 'Document not found')
   }
 })
-*/
 
 // POST /db/_bulk_docs
 // bulk add/update/delete several documents
@@ -380,7 +377,7 @@ app.get('/:db/_changes', async (req, res) => {
 
 // GET /db/_query
 // query one of the defaults.indexes
- app.post('/:db/_query', async (req, res) => {
+app.post('/:db/_query', async (req, res) => {
   const databaseName = req.params.db
   if (!utils.validDatabaseName(databaseName)) {
     return sendError(res, 400, 'Invalid database name')
@@ -408,9 +405,9 @@ app.get('/:db/_changes', async (req, res) => {
   try {
     const sk = keyutils.getIndexKey(databaseName, query.index, query.startkey, '')
     const ek = keyutils.getIndexKey(databaseName, query.index, query.endkey, '{}')
-    const data = await db.getRangeAll(sk, ek, {limit: query.limit})
+    const data = await db.getRangeAll(sk, ek, { limit: query.limit })
     const obj = { docs: [] }
-    for(var i in data) {
+    for (var i in data) {
       const row = data[i]
       const k = keyutils.getDocKey(databaseName, row[1])
       const doc = await db.get(k)
@@ -424,7 +421,6 @@ app.get('/:db/_changes', async (req, res) => {
     sendError(res, 404, 'Could not query database')
   }
 })
-
 
 // GET /db/_all_docs
 // get all documents
@@ -608,7 +604,11 @@ app.delete('/:db', readOnlyMiddleware, async (req, res) => {
   debug('Delete database - ' + databaseName)
   try {
     const k = keyutils.getDBKey(databaseName)
+    if (!k) {
+      throw new Error('database does not exist')
+    }
     await db.clear(k)
+    await db.clearRangeStartsWith([databaseName])
     res.send({ ok: true })
   } catch (e) {
     debug(e)
