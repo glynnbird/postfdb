@@ -1,0 +1,44 @@
+{
+  "name": "postfdb",
+  "version": "1.0.0",
+  "description": "A CouchDB-like interface on top of FoundationDB",
+  "main": "index.js",
+  "scripts": {
+    "standard": "standard --fix",
+    "start": "./bin/postfdb_api.bin.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glynnbird/postdb.git"
+  },
+  "keywords": [
+    "CouchDB",
+    "FoundationDB",
+    "REST"
+  ],
+  "author": "Glynn Bird <glynn.bird@gmail.com>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/glynnbird/postfdb/issues"
+  },
+  "homepage": "https://github.com/glynnbird/postfdb#readme",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "changesreader": "^1.2.1",
+    "compression": "^1.7.4",
+    "debug": "^4.1.1",
+    "express": "^4.17.1",
+    "express-basic-auth": "^1.2.0",
+    "foundationdb": "^0.10.3",
+    "kuuid": "^0.5.0",
+    "morgan": "^1.9.1",
+    "nano": "^8.1.0"
+  },
+  "devDependencies": {
+    "standard": "^13.0.0"
+  },
+  "bin": {
+    "postfdb": "bin/postfdb_api.bin.js"
+  }
+}
