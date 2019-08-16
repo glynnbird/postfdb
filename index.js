@@ -265,7 +265,7 @@ app.get('/:db/_changes', async (req, res) => {
   }
 
   try {
-    const startKey = keyutils.getChangesKey(databaseName, since + 1 )
+    const startKey = keyutils.getChangesKey(databaseName, since + 1)
     const endKey = keyutils.getChangesKey(databaseName, Number.MAX_SAFE_INTEGER)
     const data = await db.getRangeAll(startKey, endKey, { limit: limit })
     let lastSeq
