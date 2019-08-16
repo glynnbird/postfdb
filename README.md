@@ -91,13 +91,6 @@ $ curl -X GET http://localhost:5984/mydb/_all_docs?limit=2
 {"rows":[{"id":"a","key":"a","value":{"rev":"0-1"}},{"id":"001hla5z2pEedb3wB5rI2Rkd0k2pzUQg","key":"001hla5z2pEedb3wB5rI2Rkd0k2pzUQg","value":{"rev":"0-1"}}]}
 ```
 
-Add an `offset` parameter to paginate into a result set:
-
-```sh
-$ curl -X GET 'http://localhost:5984/mydb/_all_docs?limit=100&offset=2000'
-...
-```
-
 Use `startkey`/`endkey` to fetch a range of document ids:
 
 ```sh
@@ -109,7 +102,6 @@ Parameters:
 
 - `startkey`/`endkey` - one or both supplied, for range queries.
 - `limit` - the number of documents to return   (default: 100)
-- `offset` - the offset into the result set (default: 0)
 
 ### Get changes feed - GET /db/_changes
 
