@@ -1,7 +1,7 @@
 
 # PostFDB
 
-*PostDB* is proof-of-concept database that exposes a Apache CouchDB-like API but which is backed by a FoundationDB database. It supports:
+*PostFDB* is proof-of-concept database that exposes a Apache CouchDB-like API but which is backed by a FoundationDB database. It supports:
 
 - Create/Delete database API
 - Insert/Update/Delete document API, without requiring revision tokens.
@@ -25,22 +25,36 @@ npm install
 npm run start
 ```
 
-The application will connect to local FoundationDB instance and start serving out its API on port 5984 (CouchDB's default port), by default.
+The application will connect to local [FoundationDB](https://www.foundationdb.org/) instance and start serving out its API on port 5984 (CouchDB's default port), by default.
 
 ## API Reference
+
+### Ping the service - GET /
+
+```sh
+$ curl -X GET http://localhost:5984/
+{"postFDB":"Welcome","pkg":"postfdb","node":"v12.8.1","version":"1.0.0"}
+```
+
+### Get list of databases - GET /_all_dbs
+
+```sh
+$ curl -X GET http://localhost:5984/_all_dbs
+["_replicator","animaldb","cities"]
+```
 
 ### Create Database - PUT /db
 
 ```sh
 $ curl -X PUT http://localhost:5984/mydb
-{ok:true}
+{"ok":true}
 ```
 
 ### Get Database Info  - GET /db
 
 ```sh
 $ curl -X GET http://localhost:5984/mydb
-{"db_name":"mydb","instance_start_time":"0","doc_count":"0","sizes":{"file":"40960","active":"0"}
+{"update_seq":"47036","db_name":"mydb","purge_seq":0,"doc_del_count":0,"doc_count":0}
 ```
 
 ### Add a document (known ID) - PUT /db/id
@@ -151,9 +165,10 @@ $ curl -X POST \
 $ curl -X DELETE http://localhost:5984/mydb
 {"ok":true}
 ```
+
 ## Indexing
 
-*PostDB* has no MapReduce, or Mango search but it does allow any number of fields to be indexed. By default, those are fields starting with `_` (except `_id`, `_rev` and `_deleted`) e.g. `_i1`, `_myindex` & `_sausages`. For example your document could look like this:
+*PostFDB* has no MapReduce, or Mango search but it does allow any number of fields to be indexed. By default, those are fields starting with `_` (except `_id`, `_rev` and `_deleted`) e.g. `_i1`, `_myindex` & `_sausages`. For example your document could look like this:
 
 ```js
 {
@@ -256,7 +271,7 @@ Note the additional fields:
 
 ## Dashboard
 
-This project doesn't come with a dashboard but you can run *PostDB* and Apache CouchDB's [Fauxton](https://github.com/apache/couchdb-fauxton) dashboard alongside:
+This project doesn't come with a dashboard but you can run *PostFDB* and Apache CouchDB's [Fauxton](https://github.com/apache/couchdb-fauxton) dashboard alongside:
 
 ```sh
 npm install -g fauxton
@@ -272,7 +287,7 @@ The application is configured using environment variables
 - `PORT` - the port that the database's web server will listen on. Default 5984.
 - `READONLY` - set this to only allow read-only operations. Write operations will receive a 403 response. This is handy for configuring some nodes to point to PostgreSQL read replicas.
 - `USERNAME`/`PASSWORD` - to insist on authenticated connections, both `USERNAME`/`PASSWORD` must be set and then the server will require them to be supplied in every request using HTTP Basic Authentication.
-- `DEBUG` - when set to `postdb` the PostDB console will contain extra debugging information.
+- `DEBUG` - when set to `postfdb` the PostFDB console will contain extra debugging information.
 - `LOGGING` - the logging format. One of `combined`/`common`/`dev`/`short`/`tiny`/`none`. Default `dev`.
 
 ## Debugging
@@ -280,7 +295,7 @@ The application is configured using environment variables
 See debugging messages by setting the `DEBUG` environment variable:
 
 ```sh
-DEBUG=postdb npm run start
+DEBUG=postfdb npm run start
 ```
 
 ## How does it work?

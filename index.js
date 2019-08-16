@@ -256,7 +256,7 @@ app.get('/:db/_changes', async (req, res) => {
   let limit
   try {
     since = parseInt(since)
-    limit = req.query.limit ? Number.parseInt(req.query.limit) : null
+    limit = req.query.limit ? Number.parseInt(req.query.limit) : 100
   } catch (e) {
     return sendError(res, 400, 'Invalid limit parameter')
   }
@@ -564,7 +564,7 @@ app.get('/:db', async (req, res) => {
 // return server information
 app.get('/', (req, res) => {
   const obj = {
-    postDB: 'Welcome',
+    postFDB: 'Welcome',
     pkg: pkg.name,
     node: process.version,
     version: pkg.version
