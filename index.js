@@ -221,27 +221,6 @@ app.get('/_uuids', (req, res) => {
   res.send(obj)
 })
 
-// POST /db/_purge
-// totally delete documents
-app.post('/:db/_purge', async (req, res) => {
-  const databaseName = req.params.db
-  if (!utils.validDatabaseName(databaseName)) {
-    return sendError(res, 400, 'Invalid database name')
-  }
-  try {
-    const ids = Object.keys(req.body)
-    for (var i in ids) {
-      const id = ids[i]
-      const docKey = keyutils.getDocKey(databaseName, id)
-      await db.clear(docKey)
-    }
-    res.send({ purge_seq: null, purged: req.body })
-  } catch (e) {
-    debug(e)
-    sendError(res, 404, 'Could not retrieve databases')
-  }
-})
-
 // GET /db/changes
 // get a list of changes
 app.get('/:db/_changes', async (req, res) => {
@@ -281,6 +260,7 @@ app.get('/:db/_changes', async (req, res) => {
     for (var i in data) {
       const c = data[i]
       const id = c[1].id
+      const deleted = c[1].deleted
       const seq = c[0][2]
       if (!alreadySeen.includes(id)) {
         alreadySeen.push(id)
@@ -289,7 +269,7 @@ app.get('/:db/_changes', async (req, res) => {
           id: id,
           seq: seq
         }
-        if (c.deleted) {
+        if (deleted) {
           thisobj.deleted = true
         }
         if (includeDocs) {

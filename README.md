@@ -147,18 +147,6 @@ $ curl -X DELETE http://localhost:5984/mydb/001hla5z2pEedb3wB5rI2Rkd0k2pzUQg
 {"ok":true,"id":"001hla5z2pEedb3wB5rI2Rkd0k2pzUQg","rev":"0-1"}
 ```
 
-### Purge a document - DELETE /db/id
-
-Totally purge it from the database and changes feed.
-
-```sh
-$ curl -X POST \
-       -d  '{"ga":[],"9Y":[]}' \
-       http://localhost:5984/mydb/_purge_
-
-{"purge_seq":null,"purged":{"ga":[],"9Y":[]}}
-```
-
 ### Delete a database - DELETE /db
 
 ```sh
