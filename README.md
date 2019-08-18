@@ -273,7 +273,6 @@ The dashboard works for most things except Mango search.
 The application is configured using environment variables
 
 - `PORT` - the port that the database's web server will listen on. Default 5984.
-- `READONLY` - set this to only allow read-only operations. Write operations will receive a 403 response. This is handy for configuring some nodes to point to PostgreSQL read replicas.
 - `USERNAME`/`PASSWORD` - to insist on authenticated connections, both `USERNAME`/`PASSWORD` must be set and then the server will require them to be supplied in every request using HTTP Basic Authentication.
 - `DEBUG` - when set to `postfdb` the PostFDB console will contain extra debugging information.
 - `LOGGING` - the logging format. One of `combined`/`common`/`dev`/`short`/`tiny`/`none`. Default `dev`.

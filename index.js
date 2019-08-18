@@ -44,12 +44,6 @@ if (defaults.username && defaults.password) {
   app.use(basicAuth({ users: obj }))
 }
 
-// readonly middleware
-const readOnlyMiddleware = require('./lib/readonly.js')(defaults.readonly)
-if (defaults.readonly) {
-  console.log('NOTE: readonly mode')
-}
-
 // start up FoundationDB connection
 const fdb = require('foundationdb')
 fdb.setAPIVersion(600)
@@ -456,7 +450,7 @@ app.get('/:db/:id', async (req, res) => {
 
 // PUT /db/doc
 // add a doc with a known id
-app.put('/:db/:id', readOnlyMiddleware, async (req, res) => {
+app.put('/:db/:id', async (req, res) => {
   const databaseName = req.params.db
   if (!utils.validDatabaseName(databaseName)) {
     return sendError(res, 400, 'Invalid database name')
@@ -487,7 +481,7 @@ app.put('/:db/:id', readOnlyMiddleware, async (req, res) => {
 
 // DELETE /db/doc
 // delete a doc with a known id
-app.delete('/:db/:id', readOnlyMiddleware, async (req, res) => {
+app.delete('/:db/:id', async (req, res) => {
   const databaseName = req.params.db
   if (!utils.validDatabaseName(databaseName)) {
     return sendError(res, 400, 'Invalid database name')
@@ -510,7 +504,7 @@ app.delete('/:db/:id', readOnlyMiddleware, async (req, res) => {
 
 // POST /db
 // add a doc without an id
-app.post('/:db', readOnlyMiddleware, async (req, res) => {
+app.post('/:db', async (req, res) => {
   const databaseName = req.params.db
   if (!utils.validDatabaseName(databaseName)) {
     return sendError(res, 400, 'Invalid database name')
@@ -535,7 +529,7 @@ app.post('/:db', readOnlyMiddleware, async (req, res) => {
 
 // PUT /db
 // create a database
-app.put('/:db', readOnlyMiddleware, async (req, res) => {
+app.put('/:db', async (req, res) => {
   const databaseName = req.params.db
   if (!utils.validDatabaseName(databaseName)) {
     return sendError(res, 400, 'Invalid database name')
@@ -552,7 +546,7 @@ app.put('/:db', readOnlyMiddleware, async (req, res) => {
 
 // DELETE /db
 // delete a database (table)
-app.delete('/:db', readOnlyMiddleware, async (req, res) => {
+app.delete('/:db', async (req, res) => {
   const databaseName = req.params.db
   if (!utils.validDatabaseName(databaseName)) {
     return sendError(res, 400, 'Invalid database name')
