@@ -62,6 +62,18 @@ const sendError = (res, statusCode, str) => {
   res.status(statusCode).send({ error: str })
 }
 
+// check database exists
+const databaseExists = async (databaseName) => {
+  // check the database exists
+  try {
+    const k = keyutils.getDBKey(databaseName)
+    const dbObj = await db.get(k)
+    return !!dbObj
+  } catch (e) {
+    return false
+  }
+}
+
 // POST /_session
 // session endpoint
 app.post('/_session', async (req, res) => {
@@ -162,6 +174,12 @@ app.post('/:db/_bulk_docs', async (req, res) => {
     return sendError(res, 400, 'Invalid docs parameter')
   }
 
+  // check the database exists
+  const exists = await databaseExists(databaseName)
+  if (!exists) {
+    return sendError(res, 404, 'Database does not exist')
+  }
+
   try {
     // process each document
     const response = []
@@ -243,16 +261,13 @@ app.get('/:db/_changes', async (req, res) => {
     return sendError(res, 400, 'Invalid limit parameter')
   }
 
+  // check the database exists
+  const exists = await databaseExists(databaseName)
+  if (!exists) {
+    return sendError(res, 404, 'Database does not exist')
+  }
+
   try {
-    // get database
-    const k = keyutils.getDBKey(databaseName)
-
-    // check the database exists
-    const dbObj = await db.get(k)
-    if (!dbObj) {
-      throw new Error('database does not exist')
-    }
-
     // calculate key range
     const startKey = keyutils.getChangesKey(databaseName, since + 1)
     const endKey = keyutils.getChangesKey(databaseName, Number.MAX_SAFE_INTEGER)
@@ -309,6 +324,7 @@ app.post('/:db/_query', async (req, res) => {
   if (!utils.validDatabaseName(databaseName)) {
     return sendError(res, 400, 'Invalid database name')
   }
+
   const query = req.body
   if (!query || typeof query !== 'object') {
     return sendError(res, 400, 'Invalid query')
@@ -323,6 +339,12 @@ app.post('/:db/_query', async (req, res) => {
     return sendError(res, 400, 'Missing Parameter "startkey/endkey/key"')
   }
 
+  // check the database exists
+  const exists = await databaseExists(databaseName)
+  if (!exists) {
+    return sendError(res, 404, 'Database does not exist')
+  }
+
   // limit parameter
   const limit = query.limit ? query.limit : 100
   if (limit && (typeof limit !== 'number' || limit < 1)) {
@@ -330,6 +352,7 @@ app.post('/:db/_query', async (req, res) => {
   }
 
   try {
+    // calculate key range
     const sk = keyutils.getIndexKey(databaseName, query.index, query.startkey, '')
     const ek = keyutils.getIndexKey(databaseName, query.index, query.endkey, '{}')
     const data = await db.getRangeAll(sk, ek, { limit: query.limit })
@@ -373,6 +396,12 @@ app.get('/:db/_all_docs', async (req, res) => {
   // offset parameter
   if (offset && (typeof offset !== 'number' || offset < 0)) {
     return sendError(res, 400, 'Invalid offset parameter')
+  }
+
+  // check the database exists
+  const exists = await databaseExists(databaseName)
+  if (!exists) {
+    return sendError(res, 404, 'Database does not exist')
   }
 
   try {
@@ -440,6 +469,13 @@ app.put('/:db/:id', readOnlyMiddleware, async (req, res) => {
   if (!doc || typeof doc !== 'object') {
     return sendError(res, 400, 'Invalid JSON')
   }
+
+  // check the database exists
+  const exists = await databaseExists(databaseName)
+  if (!exists) {
+    return sendError(res, 404, 'Database does not exist')
+  }
+
   try {
     await writeDoc(db, databaseName, id, doc)
     res.status(201).send({ ok: true, id: id, rev: fixrev })
@@ -479,6 +515,13 @@ app.post('/:db', readOnlyMiddleware, async (req, res) => {
   if (!utils.validDatabaseName(databaseName)) {
     return sendError(res, 400, 'Invalid database name')
   }
+
+  // check the database exists
+  const exists = await databaseExists(databaseName)
+  if (!exists) {
+    return sendError(res, 404, 'Database does not exist')
+  }
+
   const id = kuuid.id()
   const doc = req.body
   try {
