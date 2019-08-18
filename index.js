@@ -244,12 +244,21 @@ app.get('/:db/_changes', async (req, res) => {
   }
 
   try {
+    // get database
+    const k = keyutils.getDBKey(databaseName)
+
+    // check the database exists
+    const dbObj = await db.get(k)
+    if (!dbObj) {
+      throw new Error('database does not exist')
+    }
+
+    // calculate key range
     const startKey = keyutils.getChangesKey(databaseName, since + 1)
     const endKey = keyutils.getChangesKey(databaseName, Number.MAX_SAFE_INTEGER)
     const data = await db.getRangeAll(startKey, endKey, { limit: limit })
-    let lastSeq
     const obj = {
-      last_seq: '',
+      last_seq: 0,
       results: []
     }
 
@@ -257,6 +266,9 @@ app.get('/:db/_changes', async (req, res) => {
     // to changes to the same document
     data.reverse()
     const alreadySeen = []
+    if (data.length) {
+      obj.last_seq = data[0][0][2]
+    }
     for (var i in data) {
       const c = data[i]
       const id = c[1].id
@@ -279,12 +291,10 @@ app.get('/:db/_changes', async (req, res) => {
           doc._rev = fixrev
           thisobj.doc = doc
         }
-        lastSeq = seq
         obj.results.push(thisobj)
       }
     }
     obj.results.reverse()
-    obj.last_seq = lastSeq
     res.send(obj)
   } catch (e) {
     console.error(e)
