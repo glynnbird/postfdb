@@ -349,7 +349,7 @@ app.post('/:db/_query', async (req, res) => {
     // calculate key range
     const sk = keyutils.getIndexKey(databaseName, query.index, query.startkey, '')
     const ek = keyutils.getIndexKey(databaseName, query.index, query.endkey, '{}')
-    const data = await db.getRangeAll(sk, ek, { limit: query.limit })
+    const data = await db.getRangeAll(sk, ek, { limit: limit })
     const obj = { docs: [] }
     for (var i in data) {
       const row = data[i]
