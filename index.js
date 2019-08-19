@@ -329,6 +329,9 @@ app.post('/:db/_query', async (req, res) => {
   if (!query.index.match(/^i[0-9]+$/)) {
     return sendError(res, 400, 'Invalid Parameter "index"')
   }
+  query.startkey = query.startkey ? query.startkey : ''
+  query.endkey = query.endkey ? query.endkey : ''
+  query.key = query.key ? query.key : undefined
   if (!query.startkey && !query.endkey && !query.key) {
     return sendError(res, 400, 'Missing Parameter "startkey/endkey/key"')
   }
@@ -347,9 +350,17 @@ app.post('/:db/_query', async (req, res) => {
 
   try {
     // calculate key range
-    const sk = keyutils.getIndexKey(databaseName, query.index, query.startkey, '')
-    const ek = keyutils.getIndexKey(databaseName, query.index, query.endkey, '{}')
-    const data = await db.getRangeAll(sk, ek, { limit: limit })
+    let sk, ek, data
+    if (query.key) {
+      sk = keyutils.getIndexKey(databaseName, query.index, query.key, '')
+      ek = keyutils.getIndexKey(databaseName, query.index, query.key, '{}')
+      data = await db.getRangeAll(sk, ek, { limit: limit })
+    } else {
+      sk = keyutils.getIndexKey(databaseName, query.index, query.startkey, '')
+      ek = keyutils.getIndexKey(databaseName, query.index, query.endkey, '{}')
+      data = await db.getRangeAll(sk, ek, { limit: limit })
+    }
+
     const obj = { docs: [] }
     for (var i in data) {
       const row = data[i]
