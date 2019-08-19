@@ -128,7 +128,7 @@ Parameters:
 
 - `since` - return changes after a known point. Default `0`
 - `include_docs` - if `true` returns document body too. Default `false`
-- `limit` - the number of documents to return.
+- `limit` - the number of documents to return. Default 100
 
 ### Bulk operations - POST /db/_bulk_docs
 
