@@ -25,7 +25,7 @@ app.set('x-powered-by', false)
 
 // JSON parsing middleware
 const bodyParser = require('body-parser')
-app.use(bodyParser.json())
+app.use(bodyParser.json({ limit: '10mb' }))
 
 // compression middleware
 const compression = require('compression')
@@ -164,7 +164,7 @@ app.post('/:db/_bulk_docs', async (req, res) => {
 
   // docs parameter
   const docs = req.body.docs
-  if (!docs || !Array.isArray(req.body.docs) || docs.length === 0) {
+  if (!docs || !Array.isArray(req.body.docs)) {
     return sendError(res, 400, 'Invalid docs parameter')
   }
 
@@ -191,7 +191,7 @@ app.post('/:db/_bulk_docs', async (req, res) => {
       docsToInsert.push(doc)
       response.push({ ok: true, id: id, rev: fixrev })
     }
-    await bulkWrite(db, databaseName, docsToInsert)
+    await bulkWrite(fdb, db, databaseName, docsToInsert)
     res.status(201).send(response)
   } catch (e) {
     res.status(400).send({ ok: false })
@@ -237,6 +237,14 @@ app.get('/_uuids', (req, res) => {
 // get a list of changes
 app.get('/:db/_changes', async (req, res) => {
   const databaseName = req.params.db
+  const minChange = {
+    type: 'versionstamp',
+    value: Buffer.from('000000000000000000000000', 'hex')
+  }
+  const maxChange = {
+    type: 'versionstamp',
+    value: Buffer.from('ffffffffffffffffffffffff', 'hex')
+  }
   if (!utils.validDatabaseName(databaseName)) {
     return sendError(res, 400, 'Invalid database name')
   }
@@ -246,7 +254,15 @@ app.get('/:db/_changes', async (req, res) => {
   const includeDocs = req.query.include_docs === 'true'
   let limit
   try {
-    since = parseInt(since)
+    if (since === '0') {
+      since = minChange
+    } else {
+      since += '00'
+      since = {
+        type: 'versionstamp',
+        value: Buffer.from(since, 'hex')
+      }
+    }
     limit = req.query.limit ? Number.parseInt(req.query.limit) : 100
   } catch (e) {
     return sendError(res, 400, 'Invalid limit parameter')
@@ -263,8 +279,8 @@ app.get('/:db/_changes', async (req, res) => {
 
   try {
     // calculate key range
-    const startKey = keyutils.getChangesKey(databaseName, since + 1)
-    const endKey = keyutils.getChangesKey(databaseName, Number.MAX_SAFE_INTEGER)
+    const startKey = keyutils.getChangesKey(databaseName, since)
+    const endKey = keyutils.getChangesKey(databaseName, maxChange)
     const data = await db.getRangeAll(startKey, endKey, { limit: limit })
     const obj = {
       last_seq: 0,
@@ -276,13 +292,13 @@ app.get('/:db/_changes', async (req, res) => {
     data.reverse()
     const alreadySeen = []
     if (data.length) {
-      obj.last_seq = data[0][0][2]
+      obj.last_seq = data[0][0][2].value.toString('hex')
     }
     for (var i in data) {
       const c = data[i]
       const id = c[1].id
       const deleted = c[1].deleted
-      const seq = c[0][2]
+      const seq = c[0][2].value.toString('hex')
       if (!alreadySeen.includes(id)) {
         alreadySeen.push(id)
         const thisobj = {
@@ -329,6 +345,8 @@ app.post('/:db/_query', async (req, res) => {
   if (!query.index.match(/^i[0-9]+$/)) {
     return sendError(res, 400, 'Invalid Parameter "index"')
   }
+  req.query.startkey = req.query.startkey || req.query.start_key || undefined
+  req.query.endkey = req.query.endkey || req.query.end_key || undefined
   query.startkey = query.startkey ? query.startkey : ''
   query.endkey = query.endkey ? query.endkey : ''
   query.key = query.key ? query.key : undefined
@@ -383,6 +401,8 @@ app.get('/:db/_all_docs', async (req, res) => {
   const databaseName = req.params.db
   const includeDocs = req.query.include_docs === 'true'
   let startkey, endkey, limit, offset
+  req.query.startkey = req.query.startkey || req.query.start_key || undefined
+  req.query.endkey = req.query.endkey || req.query.end_key || undefined
 
   try {
     startkey = req.query.startkey ? JSON.parse(req.query.startkey) : '0'
@@ -482,7 +502,7 @@ app.put('/:db/:id', async (req, res) => {
   }
 
   try {
-    await writeDoc(db, databaseName, id, doc)
+    await writeDoc(fdb, db, databaseName, id, doc)
     res.status(201).send({ ok: true, id: id, rev: fixrev })
   } catch (e) {
     debug(e)
@@ -505,7 +525,7 @@ app.delete('/:db/:id', async (req, res) => {
     const obj = {
       _deleted: true
     }
-    await writeDoc(db, databaseName, id, obj)
+    await writeDoc(fdb, db, databaseName, id, obj)
     res.send({ ok: true, id: id, rev: fixrev })
   } catch (e) {
     debug(e)
@@ -530,7 +550,7 @@ app.post('/:db', async (req, res) => {
   const id = kuuid.id()
   const doc = req.body
   try {
-    await writeDoc(db, databaseName, id, doc)
+    await writeDoc(fdb, db, databaseName, id, doc)
     res.status(201).send({ ok: true, id: id, rev: fixrev })
   } catch (e) {
     debug(e)

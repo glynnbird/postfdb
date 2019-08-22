@@ -64,11 +64,11 @@ const startReplication = async (job) => {
       throw (new Error('Invalid source URL'))
     }
     // set the status to running
-    await writeDoc(db, '_replicator', job._id, job)
+    await writeDoc(fdb, db, '_replicator', job._id, job)
   } catch (e) {
     debug(e)
     job.state = job._i1 = 'error'
-    writeDoc(db, '_replicator', job._id, job, defaults.clusterid)
+    writeDoc(fdb, db, '_replicator', job._id, job, defaults.clusterid)
     return
   }
 
@@ -129,9 +129,9 @@ const startReplication = async (job) => {
               }
             }
           }
-          await bulkWrite(db, job.target, docs)
+          await bulkWrite(fdb, db, job.target, docs)
           job.doc_count += docCount
-          await writeDoc(db, '_replicator', job._id, job)
+          await writeDoc(fdb, db, '_replicator', job._id, job)
         }
         write().then(callback)
       } catch (e) {
@@ -143,12 +143,12 @@ const startReplication = async (job) => {
     }).on('error', (e) => {
       debug('changesreader error', e)
       job.state = job._i1 = 'error'
-      writeDoc(db, '_replicator', job._id, job)
+      writeDoc(fdb, db, '_replicator', job._id, job)
     }).on('end', (e) => {
       setTimeout(function () {
         console.log(shortJobId + ' ended')
         job.state = job._i1 = 'completed'
-        writeDoc(db, '_replicator', job._id, job)
+        writeDoc(fdb, db, '_replicator', job._id, job)
       }, 1000)
     })
 }

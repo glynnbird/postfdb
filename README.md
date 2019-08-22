@@ -54,7 +54,7 @@ $ curl -X PUT http://localhost:5984/mydb
 
 ```sh
 $ curl -X GET http://localhost:5984/mydb
-{"update_seq":"47036","db_name":"mydb","purge_seq":0,"doc_del_count":0,"doc_count":0}
+{"db_name":"mydb"}
 ```
 
 ### Add a document (known ID) - PUT /db/id
@@ -121,7 +121,7 @@ Parameters:
 
 ```sh
 $ curl -X GET http://localhost:5984/mydb/_changes_
-{"last_seq":"001hluy4","results":[{"changes":[{"rev":"0-1"}],"id":"001hluy43gHHub3XakCv0Mt4DL0LpMRr","seq":"001hluy4"},{"changes":[{"rev":"0-1"}],"id":"001hluy41gCxKV2lM6oV1eaRTp2apBWS","seq":"001hluy4"}}
+{"last_seq":"000000603c16799200000061","results":[{"changes":[{"rev":"0-1"}],"id":"001hluy43gHHub3XakCv0Mt4DL0LpMRr","seq":"000000603c16799200000062"},{"changes":[{"rev":"0-1"}],"id":"001hluy41gCxKV2lM6oV1eaRTp2apBWS","seq":"000000603c16799200000061"}}
 ```
 
 Parameters:
