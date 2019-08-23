@@ -229,8 +229,7 @@ Replications are processed by a second process which is run with:
 $ npm run replicator
 ```
 
-Only one such process should run. It polls for new replcation jobs and sets them off. It will
-resume interrupted replications on restart.
+Only one such process should run. It polls for new replcation jobs and sets them off. It will resume interrupted replications on restart.
 
 You can check on the status of a replication by pulling the `_replicator` document you created:
 

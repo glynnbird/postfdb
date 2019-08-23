@@ -6,6 +6,7 @@
   "scripts": {
     "standard": "standard --fix",
     "start": "./bin/postfdb_api.bin.js",
+    "replicator": "./bin/postfdb_replicator.bin.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -39,6 +40,7 @@
     "standard": "^13.0.0"
   },
   "bin": {
-    "postfdb": "bin/postfdb_api.bin.js"
+    "postfdb": "bin/postfdb_api.bin.js",
+    "postfdb_replicator": "bin/postfdb_replicator.bin.js"
   }
 }
