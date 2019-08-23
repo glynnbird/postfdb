@@ -25,7 +25,7 @@ npm install
 npm run start
 ```
 
-The application will connect to local [FoundationDB](https://www.foundationdb.org/) instance and start serving out its API on port 5984 (CouchDB's default port), by default.
+The application will connect to local [FoundationDB](https://www.foundationdb.org/) instance and start serving out its API on port 5984 (CouchDB's usual port).
 
 ## API Reference
 
@@ -156,7 +156,7 @@ $ curl -X DELETE http://localhost:5984/mydb
 
 ## Indexing
 
-*PostFDB* has no MapReduce, or Mango search but it does allow any number of fields to be indexed. By default, those are fields starting with `_` (except `_id`, `_rev` and `_deleted`) e.g. `_i1`, `_myindex` & `_sausages`. For example your document could look like this:
+*PostFDB* has no MapReduce, or Mango search but it does allow any number of fields to be indexed. Fields starting with `_` (except `_id`, `_rev` and `_deleted`) will be indexed e.g. `_i1`, `_myindex` & `_sausages`. For example, your document could look like this:
 
 ```js
 {
@@ -174,9 +174,9 @@ $ curl -X DELETE http://localhost:5984/mydb
 
 In this case `_i1` is used to extract users by a timestamp, perhaps last login time. The `_i2` index is used to extract users by surname, all lowercase. The third compounds several fields: document type, country and last login date.
 
-If documents don't need additional data indexed, then the fields can be omitted or left as empty strings. All the indexed fields must be strings.
+If documents don't need additional data indexed, then the fields can be omitted or left as empty strings.
 
-The indexed data can be accessed using the `POST /db/_query` endpoint which expects a JSON object that defines the query like so:
+The indexed data can be accessed using the `POST /db/_query` endpoint which expects a JSON object specifying the indexed field to query and the key or range of keys to fetch:
 
 ```js
 { 
@@ -264,8 +264,6 @@ This project doesn't come with a dashboard but you can run *PostFDB* and Apache 
 npm install -g fauxton
 fauxton
 ```
-
-The dashboard works for most things except Mango search.
 
 ## Configuring
 
