@@ -123,7 +123,7 @@ app.post('/_replicator', async (req, res) => {
   const id = utils.hash(JSON.stringify({ source: doc.source, target: doc.target }))
 
   try {
-    await writeDoc(db, '_replicator', id, doc)
+    await writeDoc(fdb, db, '_replicator', id, doc)
     res.send({ ok: true, id: id, rev: fixrev })
   } catch (e) {
     debug(e)
@@ -146,7 +146,7 @@ app.delete('/_replicator/:id', async (req, res) => {
 
     // set it to cancellled and write it back
     doc.state = doc._i1 = 'cancelled'
-    await writeDoc(db, '_replicator', id, doc)
+    await writeDoc(fdb, db, '_replicator', id, doc)
     res.send({ ok: true, id: id, rev: fixrev })
   } catch (e) {
     debug(e)
