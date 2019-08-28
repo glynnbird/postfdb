@@ -646,7 +646,7 @@ const main = async () => {
     }
 
     // start up the app
-    app.listen(defaults.port, () => console.log(`${pkg.name} API service listening on port ${defaults.port}!`))
+    app.listen(defaults.port, () => console.log(`${pkg.name} API service listening on port ${defaults.port}`))
   } catch (e) {
     console.error('Cannot connect to PostgreSQL')
   }
