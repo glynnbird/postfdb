@@ -12,6 +12,7 @@ const url = require('url')
 const writeDoc = require('./lib/writedoc.js')
 const createDatabase = require('./lib/createdatabase.js')
 const bulkWrite = require('./lib/bulkwrite.js')
+const bookmark = require('./lib/bookmark.js')
 
 // fixed rev value - no MVCC here
 const fixrev = '0-1'
@@ -379,7 +380,7 @@ app.post('/:db/_query', async (req, res) => {
       data = await db.getRangeAll(sk, ek, { limit: limit })
     }
 
-    const obj = { docs: [] }
+    const obj = { docs: [], bookmark: '' }
     for (var i in data) {
       const row = data[i]
       const k = keyutils.getDocKey(databaseName, row[1])
@@ -400,27 +401,28 @@ app.post('/:db/_query', async (req, res) => {
 app.get('/:db/_all_docs', async (req, res) => {
   const databaseName = req.params.db
   const includeDocs = req.query.include_docs === 'true'
-  let startkey, endkey, limit, offset
+  let startkey, endkey, limit
   req.query.startkey = req.query.startkey || req.query.start_key || undefined
   req.query.endkey = req.query.endkey || req.query.end_key || undefined
 
   try {
-    startkey = req.query.startkey ? JSON.parse(req.query.startkey) : '0'
-    endkey = req.query.endkey ? JSON.parse(req.query.endkey) : '{}'
-    limit = req.query.limit ? JSON.parse(req.query.limit) : 100
-    offset = req.query.offset ? JSON.parse(req.query.offset) : 0
+    if (req.query.bookmark) {
+      const obj = bookmark.decode(req.query.bookmark)
+      startkey = obj.startkey
+      endkey = obj.endkey
+      limit = obj.limit
+    } else {
+      startkey = req.query.startkey ? JSON.parse(req.query.startkey) : '0'
+      endkey = req.query.endkey ? JSON.parse(req.query.endkey) : '{}'
+      limit = req.query.limit ? JSON.parse(req.query.limit) : 100
+    }
   } catch (e) {
-    return sendError(res, 400, 'Invalid startkey/endkey/limit/offset parameters')
+    return sendError(res, 400, 'Invalid startkey/endkey/limit/bookmark parameters')
   }
 
   // check limit parameter
   if (limit && (typeof limit !== 'number' || limit < 1)) {
     return sendError(res, 400, 'Invalid limit parameter')
-  }
-
-  // offset parameter
-  if (offset && (typeof offset !== 'number' || offset < 0)) {
-    return sendError(res, 400, 'Invalid offset parameter')
   }
 
   // check the database exists
@@ -434,7 +436,8 @@ app.get('/:db/_all_docs', async (req, res) => {
     const ek = keyutils.getDocKey(databaseName, endkey)
     const data = await db.getRangeAll(sk, ek, { limit: limit })
     const obj = {
-      rows: []
+      rows: [],
+      bookmark: ''
     }
     for (var i in data) {
       const d = data[i]
@@ -447,6 +450,16 @@ app.get('/:db/_all_docs', async (req, res) => {
         thisobj.doc = doc
       }
       obj.rows.push(thisobj)
+    }
+
+    // calculate bookmark
+    if (data.length) {
+      const b = {
+        startkey: data[data.length - 1][0][2] + '0',
+        endkey: endkey,
+        limit: limit
+      }
+      obj.bookmark = bookmark.encode(b)
     }
     res.send(obj)
   } catch (e) {
