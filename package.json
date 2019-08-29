@@ -37,7 +37,7 @@
     "nano": "^8.1.0"
   },
   "devDependencies": {
-    "standard": "^13.0.0"
+    "standard": "^14.1.0"
   },
   "bin": {
     "postfdb": "bin/postfdb_api.bin.js",
